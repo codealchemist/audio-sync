@@ -11,6 +11,7 @@ class TimeDiffClient {
     this.iterations = 0
     this.maxIterations = 1500
     this.precision = 2
+    this.minPrecision = 5
     this.onDiffCallback = null
     this.onErrorCallback = null
   }
@@ -116,7 +117,13 @@ class TimeDiffClient {
     }
 
     if (this.iterations >= this.maxIterations) {
-      log('max iterations reached, aborting.')
+      ++this.precision
+      this.iterations = 0
+      log(`Max iterations reached, lowering precision to ${this.precision} ms.`)
+    }
+
+    if (this.precision >= this.minPrecision) {
+      log(`UNABLE TO SYNC at lowest precision after max iterations :(`)
       return
     }
 

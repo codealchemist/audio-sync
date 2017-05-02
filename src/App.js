@@ -1,4 +1,5 @@
 import React, { Component } from 'react'
+import dragDrop from 'drag-drop'
 import MuiThemeProvider from 'material-ui/styles/MuiThemeProvider'
 import injectTapEventPlugin from 'react-tap-event-plugin'
 injectTapEventPlugin()
@@ -7,12 +8,13 @@ import control from './Control'
 
 import RaisedButton from 'material-ui/RaisedButton'
 import Slider from 'material-ui/Slider'
+import {List, ListItem} from 'material-ui/List'
+import MusicNoteIcon from 'react-material-icons/icons/image/music-note'
 import logo from './logo.svg'
 import './App.css'
 
 const sound = new Howl({ // eslint-disable-line
-  src: ['./see-you-on-the-other-side.mp3'],
-  preload: true
+  src: ['./see-you-on-the-other-side.mp3']
 })
 
 const quotes = [
@@ -29,6 +31,29 @@ class App extends Component {
       status: this.getStatusMessage(),
       controlsClass: 'hidden'
     }
+    this.songs = [
+      {
+        file: './see-you-on-the-other-side.mp3',
+        title: 'See You On The Other Side',
+        author: 'Ozzy Osbourne'
+      },
+      {
+        file: './my-little-man.mp3',
+        title: 'My Little Man',
+        author: 'Ozzy Osbourne'
+      },
+      {
+        file: './old-la-tonight.mp3',
+        title: 'Old La Tonight',
+        author: 'Ozzy Osbourne'
+      },
+      {
+        file: './perry-mason.mp3',
+        title: 'Perry Mason',
+        author: 'Ozzy Osbourne'
+      }
+    ]
+    this.selectedSong = this.songs[0]
     this.hasControls = false
     this.timeDiff = null
     this.playDelay = 5000 // in ms
@@ -68,9 +93,19 @@ class App extends Component {
           <b>Playing:</b> {message}
         </p>
       ),
+      preloading: (
+        <p className="App-intro">
+          <b>Preloading:</b> {message}
+        </p>
+      ),
       stop: (
         <p className="App-intro">
           {message}
+        </p>
+      ),
+      selectedSong: (
+        <p className="App-intro">
+          <b>Selected Song:</b> {message.title} by {message.author}
         </p>
       )
     }
@@ -86,11 +121,19 @@ class App extends Component {
 
   componentDidMount() {
     this.synchronize()
+    this.setDropArea()
+  }
+
+  setDropArea () {
+    dragDrop('#dropTarget', function (files, pos) {
+      console.log('Here are the dropped files', files)
+      console.log('Dropped at coordinates', pos.x, pos.y)
+    })
   }
 
   synchronize () {
     timeClient
-      .connect('ws://192.168.0.120:8080')
+      .connect('ws://192.168.0.120:8001')
       .init()
       .onDiff((diff) => {
         console.log('-'.repeat(80))
@@ -119,11 +162,14 @@ class App extends Component {
         console.log('-- GOT PLAY, start at:', startAt)
         console.log(`-- START IN: ${startDiff} ms`)
         setTimeout(() => {
-          sound.play()
-          this.setStatus('playing', '"See You On The Other Side", by Ozzy Osbourne.')
+          this.setStatus('preloading', `"${this.selectedSong.title}" by ${this.selectedSong.author}`)
+          this.forceFillPlaybackBuffer(() => {
+            sound.play()
+            this.setStatus('playing', `"${this.selectedSong.title}" by ${this.selectedSong.author}`)
+          })
         }, startDiff)
 
-        this.setStatus('willPlay', '"See You On The Other Side", by Ozzy Osbourne.')
+        this.setStatus('willPlay', `"${this.selectedSong.title}" by ${this.selectedSong.author}`)
       })
       .onStop(() => {
         sound.stop()
@@ -141,11 +187,29 @@ class App extends Component {
     const startAt = (new Date()).getTime() + this.playDelay
     control.play({startAt})
 
-    this.setStatus('willPlay', '"See You On The Other Side", by Ozzy Osbourne.')
+    this.setStatus('willPlay', `"${this.selectedSong.title}" by ${this.selectedSong.author}`)
     setTimeout(() => {
-      sound.play()
-      this.setStatus('playing', '"See You On The Other Side", by Ozzy Osbourne.')
+      this.setStatus('preloading', `"${this.selectedSong.title}" by ${this.selectedSong.author}`)
+      this.forceFillPlaybackBuffer(() => {
+        sound.play()
+        this.setStatus('playing', `"${this.selectedSong.title}" by ${this.selectedSong.author}`)
+      })
     }, this.playDelay)
+  }
+
+  forceFillPlaybackBuffer (callback) {
+    const vol = sound.volume()
+    sound.volume(0)
+    sound.play()
+
+    setTimeout(() => {
+      sound.stop()
+      sound.volume(vol)
+    }, 1000)
+
+    setTimeout(() => {
+      callback()
+    }, 1500)
   }
 
   stop () {
@@ -179,10 +243,37 @@ class App extends Component {
     this.hasControls = true
   }
 
+  getSongsList () {
+    const songs = this.songs.map((song) => {
+      return (
+        <ListItem
+          primaryText={`${song.title} by ${song.author}`}
+          leftIcon={<MusicNoteIcon />}
+          onClick={() => this.onSelectedSong(song)}
+        />
+      )
+    })
+
+    return (
+      <List>
+        {songs}
+      </List>
+    )
+  }
+
+  onSelectedSong (song) {
+    console.log('-- SELECTED SONG:', song)
+    sound = new Howl({ // eslint-disable-line
+      src: [song.file]
+    })
+    this.selectedSong = song
+    this.setStatus('selectedSong', song)
+  }
+
   render() {
     return (
       <MuiThemeProvider>
-        <div className="App">
+        <div className="App" id="dropTarget">
           <div className="App-header">
             <img src={logo} className="App-logo" alt="logo" onDoubleClick={() => this.showHideControls() } />
             <h2>Audio Sync</h2>
@@ -196,6 +287,10 @@ class App extends Component {
               <RaisedButton onClick={() => this.stop()}>Stop</RaisedButton>
 
               <Slider defaultValue={0.5} onChange={(event, value) => this.volume(value)} />
+
+              <div className="songs">
+                {this.getSongsList()}
+              </div>
             </div>
           </div>
         </div>
