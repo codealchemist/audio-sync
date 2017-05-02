@@ -1,5 +1,8 @@
 {
   "name": "audio-sync-test",
+  "description": "Synchronizes audio playback between devices.",
+  "author": "Alberto Miranda",
+  "repository": "codealchemist/audio-sync",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
