@@ -45,3 +45,14 @@
 .hidden {
   display: none;
 }
+
+.top-right {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+}
+
+.icon-button:hover {
+  color: #eee !important;
+  cursor: pointer;
+}

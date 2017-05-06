@@ -23,7 +23,8 @@ class TimeDiffClient {
     return this
   }
 
-  init () {
+  init (maxIterations) {
+    this.maxIterations = maxIterations || this.maxIterations
     this.ws.onopen = () => {
       log('socket open')
 

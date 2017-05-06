@@ -6,10 +6,13 @@ injectTapEventPlugin()
 import timeClient from './TimeDiffClient'
 import control from './Control'
 
-import RaisedButton from 'material-ui/RaisedButton'
+import Dialog from 'material-ui/Dialog'
+import TextField from 'material-ui/TextField'
+import {RaisedButton, FlatButton} from 'material-ui'
 import Slider from 'material-ui/Slider'
 import {List, ListItem} from 'material-ui/List'
 import MusicNoteIcon from 'react-material-icons/icons/image/music-note'
+import SettingsIcon from 'react-material-icons/icons/action/settings'
 import logo from './logo.svg'
 import './App.css'
 
@@ -29,7 +32,11 @@ class App extends Component {
     
     this.state = {
       status: this.getStatusMessage(),
-      controlsClass: 'hidden'
+      controlsClass: 'hidden',
+      settingsModalOpen: false,
+      timeServer: '192.168.0.85:8001',
+      controlServer: '192.168.0.85:9090',
+      maxRequests: 150
     }
     this.songs = [
       {
@@ -69,6 +76,11 @@ class App extends Component {
   getStatusMessage (status = 'default', message = 'Unable to connect to time server.') {
     const statusMessages = {
       default: (
+        <p className="App-intro">
+          Synchronizing...
+        </p>
+      ),
+      sync: (
         <p className="App-intro">
           Synchronizing...
         </p>
@@ -133,8 +145,8 @@ class App extends Component {
 
   synchronize () {
     timeClient
-      .connect('ws://192.168.0.85:8001')
-      .init()
+      .connect(`ws://${this.state.timeServer}`)
+      .init(this.state.maxRequests)
       .onDiff((diff) => {
         console.log('-'.repeat(80))
         console.log('--- GOT CLOCKS DIFF:', diff)
@@ -151,7 +163,7 @@ class App extends Component {
 
   initControl () {
     control
-      .connect('ws://192.168.0.85:9090')
+      .connect(`ws://${this.state.controlServer}`)
       .onError((error) => {
         console.log('ERROR: Unable to connect to CONTROL server.')
       })
@@ -270,6 +282,26 @@ class App extends Component {
     this.setStatus('selectedSong', song)
   }
 
+  onSettingsModalClose () {
+    console.log('server modal closed')
+    this.setState({settingsModalOpen: false})
+  }
+
+  openSettingsModal () {
+    this.setState({settingsModalOpen: true})
+  }
+
+  closeSettingsModal () {
+    this.setState({settingsModalOpen: false})
+  }
+
+  reconnect () {
+    console.log('Reconnecting...')
+    this.closeSettingsModal()
+    this.setStatus('sync')
+    this.synchronize()
+  }
+
   render() {
     return (
       <MuiThemeProvider>
@@ -280,6 +312,42 @@ class App extends Component {
           </div>
           
           {this.state.status}
+
+          <SettingsIcon
+            className='top-right icon-button'
+            style={{color: 'gray'}}
+            onClick={() => this.openSettingsModal()}
+          />
+
+          <Dialog
+            title="Settings"
+            actions={[
+              <FlatButton onClick={() => this.closeSettingsModal()}>Close</FlatButton>,
+              <FlatButton onClick={() => this.reconnect()}>Reconnect</FlatButton>
+            ]}
+            modal={false}
+            open={this.state.settingsModalOpen}
+            onRequestClose={() => this.onSettingsModalClose()}
+          >
+            <TextField
+              style={{width: '100%'}}
+              floatingLabelText="Time Server URL"
+              value={this.state.timeServer}
+              onChange={(event, value) => this.setState({timeServer: value})}
+            />
+            <TextField
+              style={{width: '100%'}}
+              floatingLabelText="Control Server URL"
+              value={this.state.controlServer}
+              onChange={(event, value) => this.setState({controlServer: value})}
+            />
+            <TextField
+              style={{width: '100%'}}
+              floatingLabelText="Requests to Analyze"
+              value={this.state.maxRequests}
+              onChange={(event, value) => this.setState({maxRequests: value})}
+            />
+          </Dialog>
 
           <div className="App-content">
             <div className={this.state.controlsClass}>
