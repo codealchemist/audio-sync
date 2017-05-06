@@ -133,7 +133,7 @@ class App extends Component {
 
   synchronize () {
     timeClient
-      .connect('ws://192.168.0.120:8001')
+      .connect('ws://192.168.0.85:8001')
       .init()
       .onDiff((diff) => {
         console.log('-'.repeat(80))
@@ -151,7 +151,7 @@ class App extends Component {
 
   initControl () {
     control
-      .connect('ws://192.168.0.120:9090')
+      .connect('ws://192.168.0.85:9090')
       .onError((error) => {
         console.log('ERROR: Unable to connect to CONTROL server.')
       })

@@ -3,13 +3,15 @@ class TimeDiffClient {
     this.events = {
       time: (value) => this.onTime(value)
     }
+    this.timesCollection = []
     this.times = {
-      requestTime: null,
-      serverTime: null,
-      responseTime: null
+      request: null, // time when client sends the request
+      response: null, // time when client receives the response
+      delay: null, // diff between request and response
+      server: null // local server time
     }
     this.iterations = 0
-    this.maxIterations = 1500
+    this.maxIterations = 15
     this.precision = 2
     this.minPrecision = 5
     this.onDiffCallback = null
@@ -27,7 +29,7 @@ class TimeDiffClient {
 
       // Send local type to server.
       // Server will respond with its time.
-      this.start()
+      this.request()
     }
 
     this.ws.onmessage = (event) => {
@@ -62,25 +64,17 @@ class TimeDiffClient {
     this.ws.send(data)
   }
 
-  start () {
+  request () {
     ++this.iterations
-    this.times.requestTime = (new Date()).getTime()
+    this.times.request = (new Date()).getTime()
     this.send({type: 'time', value: this.times.request})
   }
 
   reset () {
-    this.times.requestTime = null
-    this.times.serverTime = null
-    this.times.responseTime = null
-  }
-
-  haveSymmetricLatency ({requestTime, serverTime, responseTime}) {
-    const requestDiff = Math.abs(serverTime - requestTime)
-    const responseDiff = Math.abs(responseTime - serverTime)
-
-    const diff = Math.abs(requestDiff - responseDiff)
-    log(`request diff: ${requestDiff} | response diff: ${responseDiff} --> DIFF: ${diff}`)
-    return (diff <= this.precision)
+    this.times.request = null
+    this.times.server = null
+    this.times.delay = null
+    this.times.response = null
   }
 
   /**
@@ -93,46 +87,57 @@ class TimeDiffClient {
    * @param  {int} options.responseTime
    * @return {int}
    */
-  getTimeDiff ({requestTime, serverTime, responseTime}) {
-    const latency = Math.round((responseTime - requestTime) / 2)
-    const serverTimeOnRequest = serverTime - latency
-    const diff = requestTime - serverTimeOnRequest
+  getTimeDiff ({request, server, response, delay}) {
+    const approxLatency = delay / 2
+    const serverTimeOnRequest = server - approxLatency
+    const diff = request - serverTimeOnRequest
+    log('approx latency:', approxLatency)
 
-    // log(`/// TIME DIFF: ${diff} ///`)
     if (typeof this.onDiffCallback === 'function') {
       this.onDiffCallback(diff)
     }
-    return diff
   }
 
   onTime (value) {
     log('got time', value)
-    this.times.serverTime = value
-    this.times.responseTime = (new Date()).getTime()
-
+    this.times.server = value
+    this.times.response = (new Date()).getTime()
+    this.times.delay = this.times.response - this.times.request
+    this.timesCollection.push(clone(this.times))
     log('TIMES:', this.times)
-    // Symmetric latency allows to calculate time diff.
-    if (this.haveSymmetricLatency(this.times)) {
-      return this.getTimeDiff(this.times)
-    }
 
-    if (this.iterations >= this.maxIterations) {
-      ++this.precision
-      this.iterations = 0
-      log(`Max iterations reached, lowering precision to ${this.precision} ms.`)
-    }
-
-    if (this.precision >= this.minPrecision) {
-      log(`UNABLE TO SYNC at lowest precision after max iterations :(`)
+    if (this.iterations < this.maxIterations) {
+      // Ask for server time again.
+      this.request()
       return
     }
 
-    // Continue making time requests until symmetric latency
-    // is achieved.
-    log(`Symmetric latency not achieved yet, try again #${this.iterations}`)
-    this.reset()
-    this.start()
+    // Pick the fastest time to calculate and approx. latency.
+    const fastest = this.getFastestTimes()
+    this.getTimeDiff(fastest)
   }
+
+  getFastestTimes () {
+    // Once we have all the times we need sort them by delay.
+    const unsortedDelays = this.timesCollection.map((times) => {
+      return times.delay
+    })
+    log('unsorted delays:', unsortedDelays)
+    this.timesCollection = this.timesCollection.sort((times1, times2) => {
+      return times1.delay - times2.delay
+    })
+    const sortedDelays = this.timesCollection.map((times) => {
+      return times.delay
+    })
+    log('sorted delays:', sortedDelays)
+
+    // On the sorted array the first one is the fastest.
+    return this.timesCollection[0]
+  }
+}
+
+function clone (obj) {
+  return JSON.parse(JSON.stringify(obj))
 }
 
 function log () {
