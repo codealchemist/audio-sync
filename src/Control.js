@@ -21,6 +21,10 @@ class Control {
       selectSong: (data) => {
         if (typeof this.onSelectSongCallback !== 'function') return
         this.onSelectSongCallback(data)
+      },
+      reload: (data) => {
+        if (typeof this.onReloadCallback !== 'function') return
+        this.onReloadCallback(data)
       }
     }
   }
@@ -83,6 +87,11 @@ class Control {
     return this
   }
 
+  onReload (callback) {
+    this.onReloadCallback = callback
+    return this
+  }
+
   send (message) {
     const data = JSON.stringify(message)
     this.ws.send(data)
@@ -106,6 +115,10 @@ class Control {
 
   selectSong (data) {
     this.send({type: 'selectSong', data})
+  }
+
+  reload (data) {
+    this.send({type: 'reload', data})
   }
 }
 

@@ -16,10 +16,6 @@ import SettingsIcon from 'react-material-icons/icons/action/settings'
 import logo from './logo.svg'
 import './App.css'
 
-const sound = new Howl({ // eslint-disable-line
-  src: ['./see-you-on-the-other-side.mp3']
-})
-
 const quotes = [
   `"The two most powerful warriors are patience and time." --Leo Tolstoy`,
   `"If you love life, don't waste time, for time is what life is made up of. --Bruce Lee"`,
@@ -61,6 +57,7 @@ class App extends Component {
       }
     ]
     this.selectedSong = this.songs[0]
+    this.setAudioFile(this.songs[0].file)
     this.hasControls = false
     this.timeDiff = null
     this.playDelay = 5000 // in ms
@@ -117,7 +114,7 @@ class App extends Component {
       ),
       selectedSong: (
         <p className="App-intro">
-          <b>Selected Song:</b> {message.title} by {message.author}
+          <b>Selected Song:</b> {message}
         </p>
       )
     }
@@ -137,9 +134,23 @@ class App extends Component {
   }
 
   setDropArea () {
-    dragDrop('#dropTarget', function (files, pos) {
+    dragDrop('#dropTarget', (files, pos) => {
       console.log('Here are the dropped files', files)
-      console.log('Dropped at coordinates', pos.x, pos.y)
+
+      const file = files[0]
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        // reader.result;
+      }
+      reader.readAsArrayBuffer(file)
+      const url = URL.createObjectURL(file)
+
+      console.log('AUDIO URL:', url)
+      this.selectSong({
+        file: url,
+        title: null,
+        author: null
+      })
     })
   }
 
@@ -161,6 +172,13 @@ class App extends Component {
       })
   }
 
+  getSongStatus (song) {
+    return `
+      "${this.selectedSong.title || this.selectedSong.file}" 
+      by ${this.selectedSong.author || 'Unknown'}
+    `
+  }
+
   initControl () {
     control
       .connect(`ws://${this.state.controlServer}`)
@@ -174,28 +192,32 @@ class App extends Component {
         console.log('-- GOT PLAY, start at:', startAt)
         console.log(`-- START IN: ${startDiff} ms`)
         setTimeout(() => {
-          this.setStatus('preloading', `"${this.selectedSong.title}" by ${this.selectedSong.author}`)
+          this.setStatus('preloading', this.getSongStatus(this.selectedSong))
           this.forceFillPlaybackBuffer(() => {
-            sound.play()
-            this.setStatus('playing', `"${this.selectedSong.title}" by ${this.selectedSong.author}`)
+            this.sound.play()
+            this.setStatus('playing', this.getSongStatus(this.selectedSong))
           })
         }, startDiff)
 
-        this.setStatus('willPlay', `"${this.selectedSong.title}" by ${this.selectedSong.author}`)
+        this.setStatus('willPlay', this.getSongStatus(this.selectedSong))
       })
       .onStop(() => {
-        sound.stop()
+        this.sound.stop()
         this.setStatus('stop', this.getRandomQuote())
       })
       .onPause(() => {
-        sound.pause()
+        this.sound.pause()
       })
       .onVolume((data) => {
-        sound.volume(data.value)
+        this.sound.volume(data.value)
       })
       .onSelectSong((data) => {
         console.log('CONTROLLER selected a SONG:', data)
         this.onSelectSong(data.value)
+      })
+      .onReload((data) => {
+        console.log('RELOADING...', data)
+        this.doReload(data)
       })
   }
 
@@ -203,24 +225,24 @@ class App extends Component {
     const startAt = (new Date()).getTime() + this.playDelay
     control.play({startAt})
 
-    this.setStatus('willPlay', `"${this.selectedSong.title}" by ${this.selectedSong.author}`)
+    this.setStatus('willPlay', this.getSongStatus(this.selectedSong))
     setTimeout(() => {
-      this.setStatus('preloading', `"${this.selectedSong.title}" by ${this.selectedSong.author}`)
+      this.setStatus('preloading', this.getSongStatus(this.selectedSong))
       this.forceFillPlaybackBuffer(() => {
-        sound.play()
-        this.setStatus('playing', `"${this.selectedSong.title}" by ${this.selectedSong.author}`)
+        this.sound.play()
+        this.setStatus('playing', this.getSongStatus(this.selectedSong))
       })
     }, this.playDelay)
   }
 
   forceFillPlaybackBuffer (callback) {
-    const vol = sound.volume()
-    sound.volume(0)
-    sound.play()
+    const vol = this.sound.volume()
+    this.sound.volume(0)
+    this.sound.play()
 
     setTimeout(() => {
-      sound.stop()
-      sound.volume(vol)
+      this.sound.stop()
+      this.sound.volume(vol)
     }, 1000)
 
     setTimeout(() => {
@@ -230,36 +252,52 @@ class App extends Component {
 
   stop () {
     control.stop()
-    sound.stop()
+    this.sound.stop()
     this.setStatus('stop', this.getRandomQuote())
   }
 
   pause () {
     control.pause()
-    sound.pause()
+    this.sound.pause()
   }
 
   volume (value) {
     control.volume({value})
-    sound.volume(value)
+    this.sound.volume(value)
+  }
+
+  /**
+   * Reloads all clients.
+   */
+  reload () {
+    control.reload()
+    this.doReload()
+  }
+
+  doReload (data) {
+    window.location.reload()
   }
 
   selectSong (song) {
     console.log('-- SELECTED SONG:', song)
     control.selectSong({value: song})
-    sound = new Howl({ // eslint-disable-line
-      src: [song.file]
-    })
+    this.setAudioFile(song.file)
     this.selectedSong = song
-    this.setStatus('selectedSong', song)
+    this.setStatus('selectedSong', this.getSongStatus(this.selectedSong))
   }
 
   onSelectSong (song) {
-    sound = new Howl({ // eslint-disable-line
-      src: [song.file]
-    })
+    this.setAudioFile(song.file)
     this.selectedSong = song
-    this.setStatus('selectedSong', song) 
+    this.setStatus('selectedSong', this.getSongStatus(this.selectedSong)) 
+  }
+
+  setAudioFile (file) {
+    this.sound = new Howl({ // eslint-disable-line
+      src: [file],
+      format: 'mp3',
+      autoSuspend: false
+    })
   }
 
   showHideControls () {
@@ -366,6 +404,7 @@ class App extends Component {
             <div className={this.state.controlsClass}>
               <RaisedButton onClick={() => this.play()}>Play</RaisedButton>
               <RaisedButton onClick={() => this.stop()}>Stop</RaisedButton>
+              <RaisedButton onClick={() => this.reload()}>Reload</RaisedButton>
 
               <Slider defaultValue={0.5} onChange={(event, value) => this.volume(value)} />
 
