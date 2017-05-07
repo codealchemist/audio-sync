@@ -193,6 +193,10 @@ class App extends Component {
       .onVolume((data) => {
         sound.volume(data.value)
       })
+      .onSelectSong((data) => {
+        console.log('CONTROLLER selected a SONG:', data)
+        this.onSelectSong(data.value)
+      })
   }
 
   play () {
@@ -240,6 +244,24 @@ class App extends Component {
     sound.volume(value)
   }
 
+  selectSong (song) {
+    console.log('-- SELECTED SONG:', song)
+    control.selectSong({value: song})
+    sound = new Howl({ // eslint-disable-line
+      src: [song.file]
+    })
+    this.selectedSong = song
+    this.setStatus('selectedSong', song)
+  }
+
+  onSelectSong (song) {
+    sound = new Howl({ // eslint-disable-line
+      src: [song.file]
+    })
+    this.selectedSong = song
+    this.setStatus('selectedSong', song) 
+  }
+
   showHideControls () {
     if (this.hasControls) {
       this.setState({
@@ -261,7 +283,7 @@ class App extends Component {
         <ListItem
           primaryText={`${song.title} by ${song.author}`}
           leftIcon={<MusicNoteIcon />}
-          onClick={() => this.onSelectedSong(song)}
+          onClick={() => this.selectSong(song)}
         />
       )
     })
@@ -271,15 +293,6 @@ class App extends Component {
         {songs}
       </List>
     )
-  }
-
-  onSelectedSong (song) {
-    console.log('-- SELECTED SONG:', song)
-    sound = new Howl({ // eslint-disable-line
-      src: [song.file]
-    })
-    this.selectedSong = song
-    this.setStatus('selectedSong', song)
   }
 
   onSettingsModalClose () {

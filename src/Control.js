@@ -17,6 +17,10 @@ class Control {
       volume: (data) => {
         if (typeof this.onVolumeCallback !== 'function') return
         this.onVolumeCallback(data)
+      },
+      selectSong: (data) => {
+        if (typeof this.onSelectSongCallback !== 'function') return
+        this.onSelectSongCallback(data)
       }
     }
   }
@@ -74,6 +78,11 @@ class Control {
     return this
   }
 
+  onSelectSong (callback) {
+    this.onSelectSongCallback = callback
+    return this
+  }
+
   send (message) {
     const data = JSON.stringify(message)
     this.ws.send(data)
@@ -93,6 +102,10 @@ class Control {
 
   volume (data) {
     this.send({type: 'volume', data})
+  }
+
+  selectSong (data) {
+    this.send({type: 'selectSong', data})
   }
 }
 
