@@ -4,7 +4,6 @@ class Control {
   constructor() {
     this.uuid = null
     this.store = new Store('control')
-    this.isMaster = false
     this.onErrorCallback = null
     this.events = {
       uuid: (uuid) => {
@@ -168,7 +167,6 @@ class Control {
 
   play (data) {
     this.send({type: 'play', data})
-    this.isMaster = true // Will answer join requests.
     return this
   }
 

@@ -64,6 +64,7 @@ class App extends Component {
     this.timeDiff = null
     this.playDelay = 5000 // in ms
     this.defaultVolume = 0.5
+    this.isMaster = false
   }
 
   getRandomQuote () {
@@ -225,6 +226,7 @@ class App extends Component {
       .onJoin((data) => {
         this.setState({joinedClients: this.state.joinedClients + 1})
 
+        console.log(`-- is master? ${this.isMaster} / is playing? ${this.sound.playing()}`)
         if (!this.isMaster) return
         if (!this.sound.playing()) return
 
@@ -244,7 +246,7 @@ class App extends Component {
       })
       .onJoinAt((data) => {
         console.log('=== JOIN AT', data)
-        this.selectSong(data.song)
+        this.onSelectSong(data.song)
         console.log('SET selected song', data.song)
 
         const localTime = (new Date()).getTime()
