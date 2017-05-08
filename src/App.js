@@ -347,7 +347,7 @@ class App extends Component {
       src: [file],
       format: 'mp3',
       autoSuspend: false,
-      html5: false
+      html5: true
     })
   }
 
