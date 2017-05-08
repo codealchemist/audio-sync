@@ -1,7 +1,22 @@
+import Store from './Store'
+
 class Control {
   constructor() {
+    this.uuid = null
+    this.store = new Store('control')
+    this.isMaster = false
     this.onErrorCallback = null
     this.events = {
+      uuid: (uuid) => {
+        this.setUuid(uuid)
+
+        // Joining process allows new clients to start playback
+        // when other clients are already playing, in sync with them.
+        this.join({uuid: this.uuid})
+
+        if (typeof this.onUuidCallback !== 'function') return
+        this.onUuidCallback(uuid)
+      },
       play: (data) => {
         if (typeof this.onPlayCallback !== 'function') return
         this.onPlayCallback(data)
@@ -25,6 +40,18 @@ class Control {
       reload: (data) => {
         if (typeof this.onReloadCallback !== 'function') return
         this.onReloadCallback(data)
+      },
+      join: (data) => {
+        if (typeof this.onJoinCallback !== 'function') return
+        this.onJoinCallback(data)
+      },
+      joinAt: (data) => {
+        if (data.uuid !== this.uuid) {
+          log('SKIPPING joinAt, not for me.')
+          return
+        }
+        if (typeof this.onJoinAtCallback !== 'function') return
+        this.onJoinAtCallback(data)
       }
     }
   }
@@ -33,6 +60,23 @@ class Control {
     this.ws = new WebSocket(controlServerUrl)
     this.init()
     return this
+  }
+
+  setUuid (uuid) {
+    const existingUuid = this.store.get('uuid')
+    if (existingUuid) {
+      log('had UUID:', existingUuid)
+      this.uuid = existingUuid
+      return
+    }
+
+    log('got NEW UUID:', uuid)
+    this.store.set('uuid', uuid)
+    this.uuid = uuid
+  }
+
+  resetUuid () {
+    this.store.set('uuid', null)
   }
 
   init () {
@@ -92,33 +136,65 @@ class Control {
     return this
   }
 
+  onJoin (callback) {
+    this.onJoinCallback = callback
+    return this
+  }
+
+  onJoinAt (callback) {
+    this.onJoinAtCallback = callback
+    return this
+  }
+
+  onUuid (callback) {
+    this.onUuidCallback = callback
+    return this
+  }
+
   send (message) {
     const data = JSON.stringify(message)
     this.ws.send(data)
   }
 
+  join (data) {
+    this.send({type: 'join', data})
+    return this
+  }
+
+  joinAt (data) {
+    this.send({type: 'joinAt', data})
+    return this
+  }
+
   play (data) {
     this.send({type: 'play', data})
+    this.isMaster = true // Will answer join requests.
+    return this
   }
 
   stop () {
     this.send({type: 'stop'})
+    return this
   }
 
   pause () {
     this.send({type: 'pause'})
+    return this
   }
 
   volume (data) {
     this.send({type: 'volume', data})
+    return this
   }
 
   selectSong (data) {
     this.send({type: 'selectSong', data})
+    return this
   }
 
   reload (data) {
     this.send({type: 'reload', data})
+    return this
   }
 }
 

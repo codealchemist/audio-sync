@@ -34,7 +34,6 @@ class TimeDiffClient {
     }
 
     this.ws.onmessage = (event) => {
-      log('got message', event)
       const {type, value} = JSON.parse(event.data)
       if (!this.events[type]) return
       this.events[type](value)
@@ -100,12 +99,18 @@ class TimeDiffClient {
   }
 
   onTime (value) {
-    log('got time', value)
     this.times.server = value
     this.times.response = (new Date()).getTime()
     this.times.delay = this.times.response - this.times.request
     this.timesCollection.push(clone(this.times))
-    log('TIMES:', this.times)
+    log(`TIMES on #${this.iterations}:`, this.times)
+
+    // Stop iterating if we got a fast enough response.
+    if (this.times.delay <= this.minPrecision) {
+      log(`GOT FAST response on #${this.iterations}`)
+      this.getTimeDiff(this.times)
+      return
+    }
 
     if (this.iterations < this.maxIterations) {
       // Ask for server time again.

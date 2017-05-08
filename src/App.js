@@ -13,6 +13,7 @@ import Slider from 'material-ui/Slider'
 import {List, ListItem} from 'material-ui/List'
 import MusicNoteIcon from 'react-material-icons/icons/image/music-note'
 import SettingsIcon from 'react-material-icons/icons/action/settings'
+import PeopleIcon from 'react-material-icons/icons/social/people'
 import logo from './logo.svg'
 import './App.css'
 
@@ -32,7 +33,8 @@ class App extends Component {
       settingsModalOpen: false,
       timeServer: '192.168.0.85:8001',
       controlServer: '192.168.0.85:9090',
-      maxRequests: 150
+      maxRequests: 150,
+      joinedClients: 0
     }
     this.songs = [
       {
@@ -61,6 +63,7 @@ class App extends Component {
     this.hasControls = false
     this.timeDiff = null
     this.playDelay = 5000 // in ms
+    this.defaultVolume = 0.5
   }
 
   getRandomQuote () {
@@ -219,11 +222,55 @@ class App extends Component {
         console.log('RELOADING...', data)
         this.doReload(data)
       })
+      .onJoin((data) => {
+        this.setState({joinedClients: this.state.joinedClients + 1})
+
+        if (!this.isMaster) return
+        if (!this.sound.playing()) return
+
+        // Send future playback position to client for it
+        // to join in sync.
+        console.log('=== MASTER answering JOIN request', data)
+        const futureTime = this.sound.seek() + this.playDelay / 1000
+        const localTime = (new Date()).getTime()
+        control.joinAt({
+          uuid: data.uuid,
+          time: futureTime,
+          song: this.selectedSong,
+          volume: this.sound.volume,
+          startAt: localTime + this.timeDiff + this.playDelay
+        })
+      })
+      .onJoinAt((data) => {
+        console.log('=== JOIN AT', data)
+        this.selectedSong = data.song
+        console.log('SET selected song', data.song)
+
+        const localTime = (new Date()).getTime()
+        const startAt = data.startAt + this.timeDiff
+        const startDiff = startAt - localTime
+
+        console.log(`start in ${startDiff} ms`)
+        setTimeout(() => {
+          console.log('PLAY!')
+          this.sound.play()
+          this.setStatus('playing', this.getSongStatus(this.selectedSong))
+        }, startDiff)
+
+        this.sound.seek(data.time)
+        this.forceFillPlaybackBuffer(() => {
+          // Set proper audio start time and volume.
+          this.sound.seek(data.time)
+          this.sound.volume(data.volume)
+          this.setStatus('willPlay', this.getSongStatus(this.selectedSong))
+        })
+      })
   }
 
   play () {
     const startAt = (new Date()).getTime() + this.playDelay
     control.play({startAt})
+    this.isMaster = true
 
     this.setStatus('willPlay', this.getSongStatus(this.selectedSong))
     setTimeout(() => {
@@ -370,6 +417,14 @@ class App extends Component {
             onClick={() => this.openSettingsModal()}
           />
 
+          <div
+            className='top-left text-info'
+            style={{color: 'gray'}}
+          >
+            <span>{this.state.joinedClients}</span>
+            <PeopleIcon style={{color: 'gray'}} />
+          </div>
+
           <Dialog
             title="Settings"
             actions={[
@@ -406,7 +461,7 @@ class App extends Component {
               <RaisedButton onClick={() => this.stop()}>Stop</RaisedButton>
               <RaisedButton onClick={() => this.reload()}>Reload</RaisedButton>
 
-              <Slider defaultValue={0.5} onChange={(event, value) => this.volume(value)} />
+              <Slider defaultValue={this.defaultVolume} onChange={(event, value) => this.volume(value)} />
 
               <div className="songs">
                 {this.getSongsList()}
