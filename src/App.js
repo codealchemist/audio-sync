@@ -243,7 +243,7 @@ class App extends Component {
       })
       .onJoinAt((data) => {
         console.log('=== JOIN AT', data)
-        this.selectedSong = data.song
+        this.selectSong(data.song)
         console.log('SET selected song', data.song)
 
         const localTime = (new Date()).getTime()
@@ -343,7 +343,8 @@ class App extends Component {
     this.sound = new Howl({ // eslint-disable-line
       src: [file],
       format: 'mp3',
-      autoSuspend: false
+      autoSuspend: false,
+      html5: false
     })
   }
 
