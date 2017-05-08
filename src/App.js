@@ -231,14 +231,15 @@ class App extends Component {
         // Send future playback position to client for it
         // to join in sync.
         console.log('=== MASTER answering JOIN request', data)
-        const futureTime = this.sound.seek() + this.playDelay * 3 / 1000
+        const delay = this.playDelay
+        const futureTime = this.sound.seek() + delay / 1000
         const localTime = (new Date()).getTime()
         control.joinAt({
           uuid: data.uuid,
           time: futureTime,
           song: this.selectedSong,
           volume: this.sound.volume,
-          startAt: localTime + this.timeDiff + this.playDelay * 3
+          startAt: localTime + this.timeDiff + delay
         })
       })
       .onJoinAt((data) => {
