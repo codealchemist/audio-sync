@@ -61,7 +61,7 @@ class App extends Component {
         author: 'Ozzy Osbourne'
       },
       {
-        file: 'http://localhost:4000/HQmmM_qwG4k',
+        file: `//${this.state.youtubeAudioServer}/HQmmM_qwG4k`,
         title: 'Whole Lotta Love',
         author: 'Led Zeppelin'
       }
@@ -352,6 +352,11 @@ class App extends Component {
   }
 
   setAudioFile (file) {
+    // Ensure there's only one song playing at a time.
+    if (this.sound) {
+      this.sound.unload()
+    }
+
     this.sound = new Howl({ // eslint-disable-line
       src: [file],
       volume: this.state.volume,
