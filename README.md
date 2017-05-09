@@ -12,15 +12,28 @@ running *audio-sync*.
 
 The broadcast server is used to send commands to each *audio-sync* client.
 
+It also supports loading audio from YouTube by using 
+[youtube-audio-server](https://www.npmjs.com/package/youtube-audio-server)
+
 
 ## Install
 
 Clone this repo, which is the *audio-sync* client.
 Then install required servers:
 
-`npm install -g websocket-broadcast time-diff-server`
+`npm install -g websocket-broadcast time-diff-server youtube-audio-server`
 
 
 ## Run
+
+First, start required servers:
+
+`websocket-broadcast`
+
+`tds`
+
+`yas`
+
+And, finally, start *audio-sync*:
 
 `npm start`
