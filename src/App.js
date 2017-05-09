@@ -33,8 +33,11 @@ class App extends Component {
       settingsModalOpen: false,
       timeServer: '192.168.0.85:8001',
       controlServer: '192.168.0.85:9090',
+      youtubeAudioServer: '192.168.0.85:4000',
       maxRequests: 150,
-      joinedClients: 0
+      joinedClients: 0,
+      youtubeId: '',
+      volume: 0.5
     }
     this.songs = [
       {
@@ -56,6 +59,11 @@ class App extends Component {
         file: './perry-mason.mp3',
         title: 'Perry Mason',
         author: 'Ozzy Osbourne'
+      },
+      {
+        file: 'http://localhost:4000/HQmmM_qwG4k',
+        title: 'Whole Lotta Love',
+        author: 'Led Zeppelin'
       }
     ]
     this.selectedSong = this.songs[0]
@@ -63,7 +71,6 @@ class App extends Component {
     this.hasControls = false
     this.timeDiff = null
     this.playDelay = 5000 // in ms
-    this.defaultVolume = 0.5
     this.isMaster = false
   }
 
@@ -240,13 +247,13 @@ class App extends Component {
           uuid: data.uuid,
           time: futureTime,
           song: this.selectedSong,
-          volume: this.sound.volume,
+          volume: this.sound.volume(),
           startAt: localTime + this.timeDiff + delay
         })
       })
       .onJoinAt((data) => {
         console.log('=== JOIN AT', data)
-        this.onSelectSong(data.song)
+        this.onSelectSong(data)
         console.log('SET selected song', data.song)
 
         const localTime = (new Date()).getTime()
@@ -313,6 +320,7 @@ class App extends Component {
 
   volume (value) {
     control.volume({value})
+    this.setState({volume: value})
     this.sound.volume(value)
   }
 
@@ -330,14 +338,15 @@ class App extends Component {
 
   selectSong (song) {
     console.log('-- SELECTED SONG:', song)
-    control.selectSong({value: song})
+    control.selectSong({value: {song, volume: this.sound.volume()}})
     this.setAudioFile(song.file)
     this.selectedSong = song
     this.setStatus('selectedSong', this.getSongStatus(this.selectedSong))
   }
 
-  onSelectSong (song) {
+  onSelectSong ({song, volume}) {
     this.setAudioFile(song.file)
+    this.sound.volume(volume)
     this.selectedSong = song
     this.setStatus('selectedSong', this.getSongStatus(this.selectedSong)) 
   }
@@ -345,6 +354,7 @@ class App extends Component {
   setAudioFile (file) {
     this.sound = new Howl({ // eslint-disable-line
       src: [file],
+      volume: this.state.volume,
       format: 'mp3',
       autoSuspend: false,
       html5: true
@@ -402,6 +412,18 @@ class App extends Component {
     this.closeSettingsModal()
     this.setStatus('sync')
     this.synchronize()
+  }
+
+  loadFromYoutube (videoId) {
+    console.log('Load from YOUTUBE:', videoId)
+    this.setState({youtubeId: videoId})
+
+    const song = {
+      author: 'TODO',
+      title: 'YouTube Song',
+      file: `//${this.state.youtubeAudioServer}/${videoId}`
+    }
+    this.selectSong(song)
   }
 
   render() {
@@ -465,7 +487,16 @@ class App extends Component {
               <RaisedButton onClick={() => this.stop()}>Stop</RaisedButton>
               <RaisedButton onClick={() => this.reload()}>Reload</RaisedButton>
 
-              <Slider defaultValue={this.defaultVolume} onChange={(event, value) => this.volume(value)} />
+              <Slider defaultValue={this.state.volume} onChange={(event, value) => this.volume(value)} />
+
+              <div className="youtube-container">
+                <TextField
+                  style={{width: '100%'}}
+                  floatingLabelText="YouTube Video ID"
+                  value={this.state.youtubeId}
+                  onChange={(event, value) => this.loadFromYoutube(value)}
+                />
+              </div>
 
               <div className="songs">
                 {this.getSongsList()}
