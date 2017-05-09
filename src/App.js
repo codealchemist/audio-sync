@@ -37,7 +37,8 @@ class App extends Component {
       maxRequests: 150,
       joinedClients: 0,
       youtubeId: '',
-      volume: 0.5
+      volume: 0.5,
+      preloadTime: 3000
     }
     this.songs = [
       {
@@ -300,11 +301,11 @@ class App extends Component {
     setTimeout(() => {
       this.sound.stop()
       this.sound.volume(vol)
-    }, 1000)
+    }, this.state.preloadTime)
 
     setTimeout(() => {
       callback()
-    }, 1500)
+    }, this.state.preloadTime + 500)
   }
 
   stop () {
@@ -460,7 +461,7 @@ class App extends Component {
             title="Settings"
             actions={[
               <FlatButton onClick={() => this.closeSettingsModal()}>Close</FlatButton>,
-              <FlatButton onClick={() => this.reconnect()}>Reconnect</FlatButton>
+              // <FlatButton onClick={() => this.reconnect()}>Reconnect</FlatButton>
             ]}
             modal={false}
             open={this.state.settingsModalOpen}
@@ -489,6 +490,12 @@ class App extends Component {
               floatingLabelText="Requests to Analyze"
               value={this.state.maxRequests}
               onChange={(event, value) => this.setState({maxRequests: value})}
+            />
+            <TextField
+              style={{width: '100%'}}
+              floatingLabelText="Preload Time (ms)"
+              value={this.state.preloadTime}
+              onChange={(event, value) => this.setState({preloadTime: value})}
             />
           </Dialog>
 
