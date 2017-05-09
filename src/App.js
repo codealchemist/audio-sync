@@ -475,6 +475,12 @@ class App extends Component {
             />
             <TextField
               style={{width: '100%'}}
+              floatingLabelText="YouTube Audio Server URL"
+              value={this.state.youtubeAudioServer}
+              onChange={(event, value) => this.setState({youtubeAudioServer: value})}
+            />
+            <TextField
+              style={{width: '100%'}}
               floatingLabelText="Requests to Analyze"
               value={this.state.maxRequests}
               onChange={(event, value) => this.setState({maxRequests: value})}
