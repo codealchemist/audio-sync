@@ -431,7 +431,7 @@ class App extends Component {
       <MuiThemeProvider>
         <div className="App" id="dropTarget">
           <div className="App-header">
-            <img src={logo} className="App-logo" alt="logo" onDoubleClick={() => this.showHideControls() } />
+            <img src={logo} className="App-logo" alt="logo" onClick={() => this.showHideControls() } />
             <h2>Audio Sync</h2>
           </div>
           
