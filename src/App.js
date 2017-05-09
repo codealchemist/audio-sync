@@ -38,7 +38,7 @@ class App extends Component {
       joinedClients: 0,
       youtubeId: '',
       volume: 0.5,
-      preloadTime: 3000
+      preloadTime: 5000
     }
     this.songs = [
       {
