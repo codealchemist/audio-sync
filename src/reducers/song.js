@@ -46,6 +46,7 @@ function decorate (song) {
 const reducer = (state = {}, action) => {
   console.log('== SONG REDUCER: state:', state, action)
   if (typeof actions[action.type] !== 'function') return state
+    
   const newSong = actions[action.type](state, action)
   const decoratedSong = decorate(newSong)
   console.log('=== DECORATED SONG:', decoratedSong)
