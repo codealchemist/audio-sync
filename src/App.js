@@ -1,4 +1,6 @@
 import React, { Component } from 'react'
+import {createStore} from 'redux'
+import reducers from './reducers/'
 import dragDrop from 'drag-drop'
 import MuiThemeProvider from 'material-ui/styles/MuiThemeProvider'
 import injectTapEventPlugin from 'react-tap-event-plugin'
@@ -38,7 +40,8 @@ class App extends Component {
       joinedClients: 0,
       youtubeId: '',
       volume: 0.5,
-      preloadTime: 5000
+      preloadTime: 5000,
+      song: {}
     }
     this.songs = [
       {
@@ -63,11 +66,17 @@ class App extends Component {
       },
       {
         file: `//${this.state.youtubeAudioServer}/HQmmM_qwG4k`,
+        id: 'HQmmM_qwG4k',
+        source: 'youtube',
         title: 'Whole Lotta Love',
         author: 'Led Zeppelin'
       }
     ]
-    this.selectedSong = this.songs[0]
+
+    // Redux store with default state.
+    this.store = createStore(reducers, this.state)
+
+    this.store.dispatch({type: 'selectedSong', song: this.songs[0]})
     this.setAudioFile(this.songs[0].file)
     this.hasControls = false
     this.timeDiff = null
@@ -143,6 +152,15 @@ class App extends Component {
   componentDidMount() {
     this.synchronize()
     this.setDropArea()
+    // this.initStore()
+  }
+
+  initStore () {
+    this.store.subscribe(() => {
+      const state = this.store.getState()
+      console.log('=== UPDATED STORE', state)
+      this.setState(state)
+    })
   }
 
   setDropArea () {
@@ -186,8 +204,8 @@ class App extends Component {
 
   getSongStatus (song) {
     return `
-      "${this.selectedSong.title || this.selectedSong.file}" 
-      by ${this.selectedSong.author || 'Unknown'}
+      "${song.title || song.file}" 
+      by ${song.author || 'Unknown'}
     `
   }
 
@@ -204,14 +222,14 @@ class App extends Component {
         console.log('-- GOT PLAY, start at:', startAt)
         console.log(`-- START IN: ${startDiff} ms`)
         setTimeout(() => {
-          this.setStatus('preloading', this.getSongStatus(this.selectedSong))
+          this.setStatus('preloading', this.getSongStatus(this.state.song))
           this.forceFillPlaybackBuffer(() => {
             this.sound.play()
-            this.setStatus('playing', this.getSongStatus(this.selectedSong))
+            this.setStatus('playing', this.getSongStatus(this.state.song))
           })
         }, startDiff)
 
-        this.setStatus('willPlay', this.getSongStatus(this.selectedSong))
+        this.setStatus('willPlay', this.getSongStatus(this.state.song))
       })
       .onStop(() => {
         this.sound.stop()
@@ -247,7 +265,7 @@ class App extends Component {
         control.joinAt({
           uuid: data.uuid,
           time: futureTime,
-          song: this.selectedSong,
+          song: this.state.song,
           volume: this.sound.volume(),
           startAt: localTime + this.timeDiff + delay
         })
@@ -265,7 +283,7 @@ class App extends Component {
         setTimeout(() => {
           console.log('PLAY!')
           this.sound.play()
-          this.setStatus('playing', this.getSongStatus(this.selectedSong))
+          this.setStatus('playing', this.getSongStatus(this.state.song))
         }, startDiff)
 
         this.sound.seek(data.time)
@@ -273,7 +291,7 @@ class App extends Component {
           // Set proper audio start time and volume.
           this.sound.seek(data.time)
           this.sound.volume(data.volume)
-          this.setStatus('willPlay', this.getSongStatus(this.selectedSong))
+          this.setStatus('willPlay', this.getSongStatus(this.state.song))
         })
       })
   }
@@ -283,12 +301,12 @@ class App extends Component {
     control.play({startAt})
     this.isMaster = true
 
-    this.setStatus('willPlay', this.getSongStatus(this.selectedSong))
+    this.setStatus('willPlay', this.getSongStatus(this.state.song))
     setTimeout(() => {
-      this.setStatus('preloading', this.getSongStatus(this.selectedSong))
+      this.setStatus('preloading', this.getSongStatus(this.state.song))
       this.forceFillPlaybackBuffer(() => {
         this.sound.play()
-        this.setStatus('playing', this.getSongStatus(this.selectedSong))
+        this.setStatus('playing', this.getSongStatus(this.state.song))
       })
     }, this.playDelay)
   }
@@ -337,19 +355,72 @@ class App extends Component {
     window.location.reload()
   }
 
+  // /**
+  //  * Decorates song using different song decorators.
+  //  * Source decorators are based on song's source.
+  //  *
+  //  * @param {object} song
+  //  * @returns {oject} Decorated song.
+  //  */
+  // decorateSong (song, callback) {
+  //   const decorators = [
+  //     (song) => this.sourceDecorator(song)
+  //   ]
+
+  //   let decoratedSong = song
+  //   decorators.map((decorator) => {
+  //     decoratedSong = decorator(decoratedSong)
+  //   })
+
+  //   if (typeof callback !== 'function') return
+  //   callback(decoratedSong)
+  // }
+
+  // sourceDecorator (song) {
+  //   const decorators = {
+  //     youtube: (song) => this.youtubeDecorator(song)
+  //   }
+
+  //   if (!song.source) return song
+  //   if (typeof decorators[song.source] !== 'function') {
+  //     console.log(`WARNING: source decorator not found: ${song.source}`, song)
+  //     return song
+  //   }
+    
+  //   const decoratedSong = decorators[song.source](song)
+  //   return decoratedSong
+  // }
+
+  // youtubeDecorator (song) {
+  //   song.title = 'YouTube Song'
+  //   return song
+  // }
+
   selectSong (song) {
     console.log('-- SELECTED SONG:', song)
-    control.selectSong({value: {song, volume: this.sound.volume()}})
-    this.setAudioFile(song.file)
-    this.selectedSong = song
-    this.setStatus('selectedSong', this.getSongStatus(this.selectedSong))
+    this.store.dispatch({type: 'selectedSong', song})
+    const state = this.store.getState()
+    const decoratedSong = state.song
+    console.log('=== SONG FROM STATE', decoratedSong)
+    control.selectSong({value: {song: decoratedSong, volume: this.sound.volume()}})
+    this.setStatus('selectedSong', this.getSongStatus(decoratedSong))
+
+    // this.decorateSong(song, (decoratedSong) => {
+    //   console.log('-- DECORATED SONG', decoratedSong)
+    //   control.selectSong({value: {song: decoratedSong, volume: this.sound.volume()}})
+    //   this.setAudioFile(decoratedSong.file)
+    //   this.state.song = decoratedSong
+    //   this.setStatus('selectedSong', this.getSongStatus(this.state.song))
+    // })
   }
 
   onSelectSong ({song, volume}) {
     this.setAudioFile(song.file)
     this.sound.volume(volume)
-    this.selectedSong = song
-    this.setStatus('selectedSong', this.getSongStatus(this.selectedSong)) 
+    this.store.dispatch({type: 'selectedSong', song})
+    const state = this.store.getState()
+    const decoratedSong = state.song
+    this.setStatus('selectedSong', this.getSongStatus(decoratedSong)) 
   }
 
   setAudioFile (file) {
