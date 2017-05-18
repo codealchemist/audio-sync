@@ -31,9 +31,9 @@ class App extends Component {
       status: this.getStatusMessage(),
       controlsClass: 'hidden',
       settingsModalOpen: false,
-      timeServer: '192.168.0.85:8001',
-      controlServer: '192.168.0.85:9090',
-      youtubeAudioServer: '192.168.0.85:4000',
+      timeServer: '10.2.1.115:8001',
+      controlServer: '10.2.1.115:9090',
+      youtubeAudioServer: '10.2.1.115:4000',
       maxRequests: 150,
       joinedClients: 0,
       youtubeId: '',
@@ -203,6 +203,7 @@ class App extends Component {
         const startDiff = startAt - localTime
         console.log('-- GOT PLAY, start at:', startAt)
         console.log(`-- START IN: ${startDiff} ms`)
+        this.setStatus('willPlay', this.getSongStatus(this.selectedSong))
         setTimeout(() => {
           this.setStatus('preloading', this.getSongStatus(this.selectedSong))
           this.forceFillPlaybackBuffer(() => {
@@ -210,8 +211,6 @@ class App extends Component {
             this.setStatus('playing', this.getSongStatus(this.selectedSong))
           })
         }, startDiff)
-
-        this.setStatus('willPlay', this.getSongStatus(this.selectedSong))
       })
       .onStop(() => {
         this.sound.stop()
@@ -273,7 +272,6 @@ class App extends Component {
           // Set proper audio start time and volume.
           this.sound.seek(data.time)
           this.sound.volume(data.volume)
-          this.setStatus('willPlay', this.getSongStatus(this.selectedSong))
         })
       })
   }
@@ -368,6 +366,7 @@ class App extends Component {
   }
 
   showHideControls () {
+    if (!location.href.match('localhost')) return console.log('Nope. Sorry.')
     if (this.hasControls) {
       this.setState({
         controlsClass: 'hidden'
