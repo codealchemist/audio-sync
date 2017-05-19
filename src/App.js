@@ -26,14 +26,15 @@ const quotes = [
 class App extends Component {
   constructor(props) {
     super(props)
+    this.ip = process.env.REACT_APP_IP
     
     this.state = {
       status: this.getStatusMessage(),
       controlsClass: 'hidden',
       settingsModalOpen: false,
-      timeServer: '10.2.1.115:8001',
-      controlServer: '10.2.1.115:9090',
-      youtubeAudioServer: '10.2.1.115:4000',
+      timeServer: `${this.ip}:8001`,
+      controlServer: `${this.ip}:9090`,
+      youtubeAudioServer: `${this.ip}:4000`,
       maxRequests: 150,
       joinedClients: 0,
       youtubeId: '',
