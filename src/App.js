@@ -215,21 +215,6 @@ class App extends Component {
       .onError((error) => {
         console.log('ERROR: Unable to connect to CONTROL server.')
       })
-      .onPlay((data) => {
-        const localTime = (new Date()).getTime()
-        const startAt = data.startAt + this.timeDiff
-        const startDiff = startAt - localTime
-        console.log('-- GOT PLAY, start at:', startAt)
-        console.log(`-- START IN: ${startDiff} ms`)
-        this.setStatus('willPlay', this.getSongStatus(this.selectedSong))
-        setTimeout(() => {
-          this.setStatus('preloading', this.getSongStatus(this.selectedSong))
-          this.forceFillPlaybackBuffer(() => {
-            this.sound.play()
-            this.setStatus('playing', this.getSongStatus(this.selectedSong))
-          })
-        }, startDiff)
-      })
       .onStop(() => {
         this.sound.stop()
         this.setStatus('stop', this.getRandomQuote())
@@ -269,6 +254,21 @@ class App extends Component {
           startAt: localTime + this.timeDiff + delay
         })
       })
+      .onPlay((data) => {
+        const localTime = (new Date()).getTime()
+        const startAt = data.startAt + this.timeDiff
+        const startDiff = startAt - localTime
+        console.log('-- GOT PLAY, start at:', startAt)
+        console.log(`-- START IN: ${startDiff} ms`)
+        this.setStatus('willPlay', this.getSongStatus(this.selectedSong))
+        setTimeout(() => {
+          this.setStatus('preloading', this.getSongStatus(this.selectedSong))
+          this.forceFillPlaybackBuffer(this.state.preloadTime, () => {
+            this.sound.play()
+            this.setStatus('playing', this.getSongStatus(this.selectedSong))
+          })
+        }, startDiff)
+      })
       .onJoinAt((data) => {
         console.log('=== JOIN AT', data)
         this.onSelectSong(data)
@@ -281,16 +281,14 @@ class App extends Component {
         console.log(`start in ${startDiff} ms`)
         setTimeout(() => {
           console.log('PLAY!')
+          this.sound.seek(data.time)
+          this.sound.volume(data.vol)
           this.sound.play()
           this.setStatus('playing', this.getSongStatus(this.selectedSong))
         }, startDiff)
 
-        this.sound.seek(data.time)
-        this.forceFillPlaybackBuffer(() => {
-          // Set proper audio start time and volume.
-          this.sound.seek(data.time)
-          this.sound.volume(data.volume)
-        })
+        this.setStatus('preloading', this.getSongStatus(this.selectedSong))
+        this.forceFillPlaybackBuffer(1000)
       })
   }
 
@@ -302,14 +300,14 @@ class App extends Component {
     this.setStatus('willPlay', this.getSongStatus(this.selectedSong))
     setTimeout(() => {
       this.setStatus('preloading', this.getSongStatus(this.selectedSong))
-      this.forceFillPlaybackBuffer(() => {
+      this.forceFillPlaybackBuffer(this.state.preloadTime, () => {
         this.sound.play()
         this.setStatus('playing', this.getSongStatus(this.selectedSong))
       })
     }, this.playDelay)
   }
 
-  forceFillPlaybackBuffer (callback) {
+  forceFillPlaybackBuffer (preloadTime, callback) {
     const vol = this.sound.volume()
     this.sound.volume(0)
     this.sound.play()
@@ -317,11 +315,10 @@ class App extends Component {
     setTimeout(() => {
       this.sound.stop()
       this.sound.volume(vol)
-    }, this.state.preloadTime)
 
-    setTimeout(() => {
+      if (typeof callback !== 'function') return
       callback()
-    }, this.state.preloadTime + 500)
+    }, preloadTime)
   }
 
   stop () {
