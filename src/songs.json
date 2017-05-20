@@ -1,0 +1,62 @@
+[
+  {
+    "file": "./yeah.mp3",
+    "title": "Yeah",
+    "author": "Usher"
+  },
+  {
+    "file": "./spoonman.mp3",
+    "title": "Spoonman",
+    "author": "Soundgarden"
+  },
+  {
+    "file": "./kashmir.mp3",
+    "title": "Kashmir",
+    "author": "Led Zeppelin"
+  },
+  {
+    "file": "./child-in-time.mp3",
+    "title": "Child In Time",
+    "author": "Deep Purple"
+  },
+  {
+    "file": "./perfect-strangers.mp3",
+    "title": "Perfect Strangers",
+    "author": "Deep Purple"
+  },
+  {
+    "file": "./rime.mp3",
+    "title": "Rime of the Ancient Mariner",
+    "author": "Iron Maiden"
+  },
+  {
+    "file": "./wish-you-were-here.mp3",
+    "title": "Wish You Were Here",
+    "author": "Pink Floyd"
+  },
+  {
+    "file": "./see-you-on-the-other-side.mp3",
+    "title": "See You On The Other Side",
+    "author": "Ozzy Osbourne"
+  },
+  {
+    "file": "./my-little-man.mp3",
+    "title": "My Little Man",
+    "author": "Ozzy Osbourne"
+  },
+  {
+    "file": "./old-la-tonight.mp3",
+    "title": "Old La Tonight",
+    "author": "Ozzy Osbourne"
+  },
+  {
+    "file": "./perry-mason.mp3",
+    "title": "Perry Mason",
+    "author": "Ozzy Osbourne"
+  },
+  {
+    "file": "http://localhost:4000/HQmmM_qwG4k",
+    "title": "Whole Lotta Love",
+    "author": "Led Zeppelin"
+  }
+]

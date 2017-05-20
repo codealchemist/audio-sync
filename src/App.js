@@ -14,6 +14,7 @@ import {List, ListItem} from 'material-ui/List'
 import MusicNoteIcon from 'react-material-icons/icons/image/music-note'
 import SettingsIcon from 'react-material-icons/icons/action/settings'
 import PeopleIcon from 'react-material-icons/icons/social/people'
+import songs from './songs'
 import logo from './logo.svg'
 import './App.css'
 
@@ -41,39 +42,30 @@ class App extends Component {
       volume: 0.5,
       preloadTime: 5000
     }
-    this.songs = [
-      {
-        file: './see-you-on-the-other-side.mp3',
-        title: 'See You On The Other Side',
-        author: 'Ozzy Osbourne'
-      },
-      {
-        file: './my-little-man.mp3',
-        title: 'My Little Man',
-        author: 'Ozzy Osbourne'
-      },
-      {
-        file: './old-la-tonight.mp3',
-        title: 'Old La Tonight',
-        author: 'Ozzy Osbourne'
-      },
-      {
-        file: './perry-mason.mp3',
-        title: 'Perry Mason',
-        author: 'Ozzy Osbourne'
-      },
-      {
-        file: `//${this.state.youtubeAudioServer}/HQmmM_qwG4k`,
-        title: 'Whole Lotta Love',
-        author: 'Led Zeppelin'
-      }
-    ]
+    this.songs = songs
     this.selectedSong = this.songs[0]
     this.setAudioFile(this.songs[0].file)
     this.hasControls = false
     this.timeDiff = null
     this.playDelay = 5000 // in ms
     this.isMaster = false
+  }
+
+  onKey (event) {
+    // Left arrow.
+    if (event.keyCode === 37) {
+      console.log('left')
+
+      // TODO: sync backwards
+      return
+    }
+
+    // Right arrow.
+    if (event.keyCode === 39) {
+      console.log('right')
+      // TODO: sync forward
+      return
+    }
   }
 
   getRandomQuote () {
@@ -144,6 +136,15 @@ class App extends Component {
   componentDidMount() {
     this.synchronize()
     this.setDropArea()
+
+    // Set key events.
+    document.querySelector('body')
+      .addEventListener('keydown', (event) => this.onKey(event))
+  }
+
+  componentWillUnmount() {
+    document.querySelector('body')
+      .removeEventListener('keydown', (event) => this.onKey(event)) 
   }
 
   setDropArea () {
