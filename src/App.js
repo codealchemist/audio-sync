@@ -48,6 +48,7 @@ class App extends Component {
     this.hasControls = false
     this.timeDiff = null
     this.playDelay = 5000 // in ms
+    this.offset = 1 // in ms
     this.isMaster = false
   }
 
@@ -55,15 +56,30 @@ class App extends Component {
     // Left arrow.
     if (event.keyCode === 37) {
       console.log('left')
+      this.timeDiff -= this.offset
 
-      // TODO: sync backwards
+      // If we're playing audio live adjust it.
+      if (this.sound.playing()) {
+        const currentPlayTime = this.sound.seek()
+        const offsetTime = currentPlayTime - parseFloat(`0.00${this.offset}`)
+        this.sound.seek(offsetTime)
+        console.log(`Playing @${currentPlayTime}, move backwards to ${offsetTime}`)
+      }
       return
     }
 
     // Right arrow.
     if (event.keyCode === 39) {
-      console.log('right')
-      // TODO: sync forward
+      this.timeDiff += this.offset
+      console.log(`+ OFFSET ${this.offset}ms`, this.timeDiff)
+
+      // If we're playing audio live adjust it.
+      if (this.sound.playing()) {
+        const currentPlayTime = this.sound.seek()
+        const offsetTime = currentPlayTime + parseFloat(`0.00${this.offset}`)
+        this.sound.seek(offsetTime)
+        console.log(`Playing @${currentPlayTime}, move forward to ${offsetTime}`)
+      }
       return
     }
   }
