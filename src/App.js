@@ -255,7 +255,7 @@ class App extends Component {
 
         // Send future playback position to client for it
         // to join in sync.
-        console.log('=== MASTER answering JOIN request', data)
+        console.log('MASTER answering JOIN request', data)
         const delay = this.playDelay
         const futureTime = this.sound.seek() + delay / 1000
         const localTime = (new Date()).getTime()
@@ -271,14 +271,18 @@ class App extends Component {
         const localTime = (new Date()).getTime()
         const startAt = data.startAt + this.state.timeDiff
         const startDiff = startAt - localTime
-        console.log('-- GOT PLAY, start at:', startAt)
-        console.log(`-- START IN: ${startDiff} ms`)
+        console.log('GOT PLAY, start at:', startAt)
+        console.log(`START IN: ${startDiff} ms`)
         this.setStatus('willPlay', this.getSongStatus(this.selectedSong))
         setTimeout(() => {
           this.setStatus('preloading', this.getSongStatus(this.selectedSong))
           this.forceFillPlaybackBuffer(this.state.preloadTime, () => {
+            console.log('PLAY!')
             this.sound.play()
             this.setStatus('playing', this.getSongStatus(this.selectedSong))
+
+            const isPlaying = this.sound.playing()
+            console.log('Started playing?', isPlaying)
           })
         }, startDiff)
       })
@@ -298,6 +302,9 @@ class App extends Component {
           this.sound.volume(data.vol)
           this.sound.play()
           this.setStatus('playing', this.getSongStatus(this.selectedSong))
+
+          const isPlaying = this.sound.playing()
+          console.log('Started playing?', isPlaying)
         }, startDiff)
 
         this.setStatus('preloading', this.getSongStatus(this.selectedSong))
@@ -463,10 +470,10 @@ class App extends Component {
 
     return (
       <IconButton
-        className='top-right icon-button'
+        className='top-right'
         tooltip="Re-Sync"
       >
-        <SyncIcon />
+        <SyncIcon className='icon-button' />
       </IconButton>
     )
   }
