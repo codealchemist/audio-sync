@@ -35,7 +35,7 @@ class App extends Component {
       controlServer: `${this.ip}:9090`,
       youtubeAudioServer: `${this.ip}:4000`,
       maxRequests: 150,
-      joinedClients: 0,
+      joinedClients: 1,
       youtubeId: '',
       volume: 0.5,
       preloadTime: 5000,
@@ -46,7 +46,8 @@ class App extends Component {
     this.setAudioFile(this.songs[0].file)
     this.hasControls = false
     this.playDelay = 5000 // in ms
-    this.offset = 1 // in ms
+    this.backwardsOffset = 1 // in ms
+    this.forwardOffset = 100 // in ms
     this.isMaster = false
     this.isServer = location.href.match('localhost')
   }
@@ -55,14 +56,15 @@ class App extends Component {
     // Left arrow.
     if (event.keyCode === 37) {
       console.log('left')
-      const timeDiff = this.state.timeDiff - this.offset
+      const timeDiff = this.state.timeDiff - this.backwardsOffset
       this.setState({timeDiff})
       this.store.set('timeDiff', this.state.timeDiff)
+      console.log(`- OFFSET ${this.backwardsOffset}ms`, this.state.timeDiff)
 
       // If we're playing audio live adjust it.
       if (this.sound.playing()) {
         const currentPlayTime = this.sound.seek()
-        const offsetTime = currentPlayTime - parseFloat(this.offset/1000)
+        const offsetTime = currentPlayTime - this.backwardsOffset / 1000
         this.sound.seek(offsetTime)
         console.log(`Playing @${currentPlayTime}, move backwards to ${offsetTime}`)
       }
@@ -71,15 +73,15 @@ class App extends Component {
 
     // Right arrow.
     if (event.keyCode === 39) {
-      const timeDiff = this.state.timeDiff + this.offset
+      const timeDiff = this.state.timeDiff + this.forwardOffset
       this.setState({timeDiff})
       this.store.set('timeDiff', this.state.timeDiff)
-      console.log(`+ OFFSET ${this.offset}ms`, this.state.timeDiff)
+      console.log(`+ OFFSET ${this.forwardOffset}ms`, this.state.timeDiff)
 
       // If we're playing audio live adjust it.
       if (this.sound.playing()) {
         const currentPlayTime = this.sound.seek()
-        const offsetTime = currentPlayTime + parseFloat(this.offset/1000)
+        const offsetTime = currentPlayTime + this.forwardOffset / 1000
         this.sound.seek(offsetTime)
         console.log(`Playing @${currentPlayTime}, move forward to ${offsetTime}`)
       }
@@ -339,6 +341,10 @@ class App extends Component {
       this.forceFillPlaybackBuffer(this.state.preloadTime, () => {
         this.sound.play()
         this.setStatus('playing', this.getSongStatus(this.selectedSong))
+        console.log('PLAY!')
+
+        const isPlaying = this.sound.playing()
+        console.log('Started playing?', isPlaying)
       })
     }, delay)
   }
