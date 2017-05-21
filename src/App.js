@@ -5,28 +5,26 @@ import injectTapEventPlugin from 'react-tap-event-plugin'
 injectTapEventPlugin()
 import timeClient from './TimeDiffClient'
 import control from './Control'
+import Store from './Store'
+import Settings from './Settings'
 
-import Dialog from 'material-ui/Dialog'
 import TextField from 'material-ui/TextField'
-import {RaisedButton, FlatButton} from 'material-ui'
+import {RaisedButton} from 'material-ui'
+import IconButton from 'material-ui/IconButton'
 import Slider from 'material-ui/Slider'
 import {List, ListItem} from 'material-ui/List'
 import MusicNoteIcon from 'react-material-icons/icons/image/music-note'
-import SettingsIcon from 'react-material-icons/icons/action/settings'
 import PeopleIcon from 'react-material-icons/icons/social/people'
+import SyncIcon from 'react-material-icons/icons/notification/sync'
 import songs from './songs'
+import quotes from './quotes'
 import logo from './logo.svg'
 import './App.css'
-
-const quotes = [
-  `"The two most powerful warriors are patience and time." --Leo Tolstoy`,
-  `"If you love life, don't waste time, for time is what life is made up of. --Bruce Lee"`,
-  `"They always say time changes things, but you actually have to change them yourself." --Andy Warhol`
-]
 
 class App extends Component {
   constructor(props) {
     super(props)
+    this.store = new Store('app')
     this.ip = process.env.REACT_APP_IP
     
     this.state = {
@@ -40,23 +38,26 @@ class App extends Component {
       joinedClients: 0,
       youtubeId: '',
       volume: 0.5,
-      preloadTime: 5000
+      preloadTime: 5000,
+      timeDiff: this.store.get('timeDiff') || ''
     }
     this.songs = songs
     this.selectedSong = this.songs[0]
     this.setAudioFile(this.songs[0].file)
     this.hasControls = false
-    this.timeDiff = null
     this.playDelay = 5000 // in ms
     this.offset = 1 // in ms
     this.isMaster = false
+    this.isServer = location.href.match('localhost')
   }
 
   onKey (event) {
     // Left arrow.
     if (event.keyCode === 37) {
       console.log('left')
-      this.timeDiff -= this.offset
+      const timeDiff = this.state.timeDiff - this.offset
+      this.setState({timeDiff})
+      this.store.set('timeDiff', this.state.timeDiff)
 
       // If we're playing audio live adjust it.
       if (this.sound.playing()) {
@@ -70,8 +71,10 @@ class App extends Component {
 
     // Right arrow.
     if (event.keyCode === 39) {
-      this.timeDiff += this.offset
-      console.log(`+ OFFSET ${this.offset}ms`, this.timeDiff)
+      const timeDiff = this.state.timeDiff + this.offset
+      this.setState({timeDiff})
+      this.store.set('timeDiff', this.state.timeDiff)
+      console.log(`+ OFFSET ${this.offset}ms`, this.state.timeDiff)
 
       // If we're playing audio live adjust it.
       if (this.sound.playing()) {
@@ -88,24 +91,24 @@ class App extends Component {
     const index = Math.floor(Math.random() * (quotes.length))
     const quote = quotes[index]
     console.log('-- RANDOM QUOTE:', quote)
-    return quote
+    return `<i>${quote.message}</i> <b>--${quote.author}</b>`
   }
 
-  getStatusMessage (status = 'default', message = 'Unable to connect to time server.') {
+  getStatusMessage (status = 'sync', message = 'Unable to connect to time server.') {
     const statusMessages = {
-      default: (
-        <p className="App-intro">
-          Synchronizing...
-        </p>
-      ),
       sync: (
         <p className="App-intro">
-          Synchronizing...
+          <b>Synchronizing...</b>
         </p>
       ),
       ok: (
         <p className="App-intro">
           <b>Synchronized</b> successfully!
+        </p>
+      ),
+      alreadySync: (
+        <p className="App-intro">
+          Using saved <b>synchronization</b>.
         </p>
       ),
       error: (
@@ -185,6 +188,15 @@ class App extends Component {
   }
 
   synchronize () {
+    // Avoid synchronizing if we already did.
+    if (this.state.timeDiff !== '') {
+      this.setStatus('alreadySync')
+      return
+    }
+
+    console.log('SYNCHRONIZING...')
+    this.setStatus('sync')
+
     timeClient
       .connect(`ws://${this.state.timeServer}`)
       .init(this.state.maxRequests)
@@ -193,7 +205,8 @@ class App extends Component {
         console.log('--- GOT CLOCKS DIFF:', diff)
         console.log('-'.repeat(80))
         this.setStatus('ok')
-        this.timeDiff = diff
+        this.setState({timeDiff: diff})
+        this.store.set('timeDiff', this.state.timeDiff)
         this.initControl()
       })
       .onError((error) => {
@@ -251,12 +264,12 @@ class App extends Component {
           time: futureTime,
           song: this.selectedSong,
           volume: this.sound.volume(),
-          startAt: localTime + this.timeDiff + delay
+          startAt: localTime + this.state.timeDiff + delay
         })
       })
       .onPlay((data) => {
         const localTime = (new Date()).getTime()
-        const startAt = data.startAt + this.timeDiff
+        const startAt = data.startAt + this.state.timeDiff
         const startDiff = startAt - localTime
         console.log('-- GOT PLAY, start at:', startAt)
         console.log(`-- START IN: ${startDiff} ms`)
@@ -275,7 +288,7 @@ class App extends Component {
         console.log('SET selected song', data.song)
 
         const localTime = (new Date()).getTime()
-        const startAt = data.startAt + this.timeDiff
+        const startAt = data.startAt + this.state.timeDiff
         const startDiff = startAt - localTime
 
         console.log(`start in ${startDiff} ms`)
@@ -381,7 +394,7 @@ class App extends Component {
   }
 
   showHideControls () {
-    if (!location.href.match('localhost')) return console.log('Nope. Sorry.')
+    if (!this.isServer) return console.log('Nice rotating logo right? :p')
     if (this.hasControls) {
       this.setState({
         controlsClass: 'hidden'
@@ -414,23 +427,9 @@ class App extends Component {
     )
   }
 
-  onSettingsModalClose () {
-    console.log('server modal closed')
-    this.setState({settingsModalOpen: false})
-  }
-
-  openSettingsModal () {
-    this.setState({settingsModalOpen: true})
-  }
-
-  closeSettingsModal () {
-    this.setState({settingsModalOpen: false})
-  }
-
   reconnect () {
     console.log('Reconnecting...')
     this.closeSettingsModal()
-    this.setStatus('sync')
     this.synchronize()
   }
 
@@ -446,6 +445,63 @@ class App extends Component {
     this.selectSong(song)
   }
 
+  onSettingsChange (change) {
+    console.log(`SETTINGS CHANGE:`, change)
+    this.setState(change)
+  }
+
+  resetSync () {
+    console.log('Reset Sync')
+    this.store.set('timeDiff', '')
+    this.setState({timeDiff: ''}, () => {
+      this.synchronize()
+    })
+  }
+
+  getSyncButton () {
+    if (this.isServer) return
+
+    return (
+      <IconButton
+        className='top-right icon-button'
+        tooltip="Re-Sync"
+      >
+        <SyncIcon />
+      </IconButton>
+    )
+  }
+
+  getSettingsButton () {
+    if (!this.isServer) return
+
+    return (
+      <Settings
+        timeServer={this.state.timeServer}
+        controlServer={this.state.controlServer}
+        youtubeAudioServer={this.state.youtubeAudioServer}
+        maxRequests={this.state.maxRequests}
+        preloadTime={this.state.preloadTime}
+        timeDiff={this.state.timeDiff}
+        resetSync={() => this.resetSync()}
+        onSettingsChange={(change) => this.onSettingsChange(change)}
+      />
+    )
+  }
+
+  getConnectedClients () {
+    if (!this.isServer) return
+
+    return (
+      <div
+        className='top-left text-info'
+        style={{color: 'gray'}}
+      >
+        <span>{this.state.joinedClients}</span>
+        <PeopleIcon style={{color: 'gray'}} />
+      </div>
+    )
+  }
+
   render() {
     return (
       <MuiThemeProvider>
@@ -456,62 +512,9 @@ class App extends Component {
           </div>
           
           {this.state.status}
-
-          <SettingsIcon
-            className='top-right icon-button'
-            style={{color: 'gray'}}
-            onClick={() => this.openSettingsModal()}
-          />
-
-          <div
-            className='top-left text-info'
-            style={{color: 'gray'}}
-          >
-            <span>{this.state.joinedClients}</span>
-            <PeopleIcon style={{color: 'gray'}} />
-          </div>
-
-          <Dialog
-            title="Settings"
-            actions={[
-              <FlatButton onClick={() => this.closeSettingsModal()}>Close</FlatButton>,
-              // <FlatButton onClick={() => this.reconnect()}>Reconnect</FlatButton>
-            ]}
-            modal={false}
-            open={this.state.settingsModalOpen}
-            onRequestClose={() => this.onSettingsModalClose()}
-          >
-            <TextField
-              style={{width: '100%'}}
-              floatingLabelText="Time Server URL"
-              value={this.state.timeServer}
-              onChange={(event, value) => this.setState({timeServer: value})}
-            />
-            <TextField
-              style={{width: '100%'}}
-              floatingLabelText="Control Server URL"
-              value={this.state.controlServer}
-              onChange={(event, value) => this.setState({controlServer: value})}
-            />
-            <TextField
-              style={{width: '100%'}}
-              floatingLabelText="YouTube Audio Server URL"
-              value={this.state.youtubeAudioServer}
-              onChange={(event, value) => this.setState({youtubeAudioServer: value})}
-            />
-            <TextField
-              style={{width: '100%'}}
-              floatingLabelText="Requests to Analyze"
-              value={this.state.maxRequests}
-              onChange={(event, value) => this.setState({maxRequests: value})}
-            />
-            <TextField
-              style={{width: '100%'}}
-              floatingLabelText="Preload Time (ms)"
-              value={this.state.preloadTime}
-              onChange={(event, value) => this.setState({preloadTime: value})}
-            />
-          </Dialog>
+          {this.getSyncButton()}
+          {this.getConnectedClients()}
+          {this.getSettingsButton()}
 
           <div className="App-content">
             <div className={this.state.controlsClass}>

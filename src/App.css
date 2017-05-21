@@ -47,7 +47,7 @@
 }
 
 .top-right {
-  position: absolute;
+  position: absolute !important;
   top: 20px;
   right: 20px;
 }
@@ -56,6 +56,10 @@
   position: absolute;
   top: 20px;
   left: 20px;
+}
+
+.icon-button {
+  color: gray !important;
 }
 
 .icon-button:hover {
