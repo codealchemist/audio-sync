@@ -62,7 +62,7 @@ class App extends Component {
       // If we're playing audio live adjust it.
       if (this.sound.playing()) {
         const currentPlayTime = this.sound.seek()
-        const offsetTime = currentPlayTime - parseFloat(`0.00${this.offset}`)
+        const offsetTime = currentPlayTime - parseFloat(this.offset/1000)
         this.sound.seek(offsetTime)
         console.log(`Playing @${currentPlayTime}, move backwards to ${offsetTime}`)
       }
@@ -79,7 +79,7 @@ class App extends Component {
       // If we're playing audio live adjust it.
       if (this.sound.playing()) {
         const currentPlayTime = this.sound.seek()
-        const offsetTime = currentPlayTime + parseFloat(`0.00${this.offset}`)
+        const offsetTime = currentPlayTime + parseFloat(this.offset/1000)
         this.sound.seek(offsetTime)
         console.log(`Playing @${currentPlayTime}, move forward to ${offsetTime}`)
       }
@@ -251,6 +251,10 @@ class App extends Component {
         console.log('RELOADING...', data)
         this.doReload(data)
       })
+      .onResetSync((data) => {
+        console.log('RESET SYNC...', data)
+        this.doResetSync(data)
+      })
       .onJoin((data) => {
         this.setState({joinedClients: this.state.joinedClients + 1})
 
@@ -317,19 +321,26 @@ class App extends Component {
       })
   }
 
+  getStartDiff (delay = 0) {
+    const startDiff = this.state.timeDiff + delay
+    console.log(`Start diff: ${startDiff} (delay: ${delay})`)
+    return startDiff
+  }
+
   play () {
     const startAt = (new Date()).getTime() + this.playDelay
     control.play({startAt})
     this.isMaster = true
 
     this.setStatus('willPlay', this.getSongStatus(this.selectedSong))
+    const delay = this.getStartDiff(this.playDelay)
     setTimeout(() => {
       this.setStatus('preloading', this.getSongStatus(this.selectedSong))
       this.forceFillPlaybackBuffer(this.state.preloadTime, () => {
         this.sound.play()
         this.setStatus('playing', this.getSongStatus(this.selectedSong))
       })
-    }, this.playDelay)
+    }, delay)
   }
 
   forceFillPlaybackBuffer (preloadTime, callback) {
@@ -373,6 +384,20 @@ class App extends Component {
 
   doReload (data) {
     window.location.reload()
+  }
+
+  resetSync () {
+    control.resetSync()
+    this.doResetSync()
+  }
+
+  doResetSync () {
+    console.log('Reset Sync')
+    this.store.set('timeDiff', '')
+    this.doReload()
+    // this.setState({timeDiff: ''}, () => {
+    //   this.synchronize()
+    // })
   }
 
   selectSong (song) {
@@ -462,14 +487,6 @@ class App extends Component {
     this.setState(change)
   }
 
-  resetSync () {
-    console.log('Reset Sync')
-    this.store.set('timeDiff', '')
-    this.setState({timeDiff: ''}, () => {
-      this.synchronize()
-    })
-  }
-
   getSyncButton () {
     if (this.isServer) return
 
@@ -494,7 +511,7 @@ class App extends Component {
         maxRequests={this.state.maxRequests}
         preloadTime={this.state.preloadTime}
         timeDiff={this.state.timeDiff}
-        resetSync={() => this.resetSync()}
+        resetSync={() => this.doResetSync()}
         onSettingsChange={(change) => this.onSettingsChange(change)}
       />
     )
@@ -533,6 +550,7 @@ class App extends Component {
               <RaisedButton onClick={() => this.play()}>Play</RaisedButton>
               <RaisedButton onClick={() => this.stop()}>Stop</RaisedButton>
               <RaisedButton onClick={() => this.reload()}>Reload</RaisedButton>
+              <RaisedButton onClick={() => this.resetSync()}>Re-Sync</RaisedButton>
 
               <Slider defaultValue={this.state.volume} onChange={(event, value) => this.volume(value)} />
 

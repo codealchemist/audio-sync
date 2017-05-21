@@ -40,6 +40,10 @@ class Control {
         if (typeof this.onReloadCallback !== 'function') return
         this.onReloadCallback(data)
       },
+      resetSync: (data) => {
+        if (typeof this.onResetSyncCallback !== 'function') return
+        this.onResetSyncCallback(data)
+      },
       join: (data) => {
         if (typeof this.onJoinCallback !== 'function') return
         this.onJoinCallback(data)
@@ -135,6 +139,11 @@ class Control {
     return this
   }
 
+  onResetSync (callback) {
+    this.onResetSyncCallback = callback
+    return this
+  }
+
   onJoin (callback) {
     this.onJoinCallback = callback
     return this
@@ -192,6 +201,11 @@ class Control {
 
   reload (data) {
     this.send({type: 'reload', data})
+    return this
+  }
+
+  resetSync (data) {
+    this.send({type: 'resetSync', data})
     return this
   }
 }
