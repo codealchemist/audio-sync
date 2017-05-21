@@ -91,7 +91,11 @@ class App extends Component {
     const index = Math.floor(Math.random() * (quotes.length))
     const quote = quotes[index]
     console.log('-- RANDOM QUOTE:', quote)
-    return `<i>${quote.message}</i> <b>--${quote.author}</b>`
+    return (
+      <span>
+        <i>{quote.message}</i> <b>--{quote.author}</b>
+      </span>
+    )
   }
 
   getStatusMessage (status = 'sync', message = 'Unable to connect to time server.') {
@@ -191,6 +195,7 @@ class App extends Component {
     // Avoid synchronizing if we already did.
     if (this.state.timeDiff !== '') {
       this.setStatus('alreadySync')
+      this.initControl()
       return
     }
 
