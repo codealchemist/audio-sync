@@ -39,7 +39,8 @@ class App extends Component {
       youtubeId: '',
       volume: 0.5,
       preloadTime: 5000,
-      timeDiff: this.store.get('timeDiff') || ''
+      timeDiff: this.store.get('timeDiff') || '',
+      offset: this.store.get('offset') || 0
     }
     this.songs = songs
     this.selectedSong = this.songs[0]
@@ -56,10 +57,13 @@ class App extends Component {
     // Left arrow.
     if (event.keyCode === 37) {
       console.log('left')
-      const timeDiff = this.state.timeDiff - this.backwardsOffset
-      this.setState({timeDiff})
-      this.store.set('timeDiff', this.state.timeDiff)
-      console.log(`- OFFSET ${this.backwardsOffset}ms`, this.state.timeDiff)
+      const offset = this.state.offset - this.backwardsOffset
+      this.setState({offset})
+      this.store.set('offset', this.state.offset)
+      console.log(`
+        - OFFSET ${this.backwardsOffset}ms --> ${this.state.offset}ms
+        Time DIFF: ${this.state.timeDiff + this.state.offset}ms
+      `)
 
       // If we're playing audio live adjust it.
       if (this.sound.playing()) {
@@ -73,10 +77,13 @@ class App extends Component {
 
     // Right arrow.
     if (event.keyCode === 39) {
-      const timeDiff = this.state.timeDiff + this.forwardOffset
-      this.setState({timeDiff})
-      this.store.set('timeDiff', this.state.timeDiff)
-      console.log(`+ OFFSET ${this.forwardOffset}ms`, this.state.timeDiff)
+      const offset = this.state.offset + this.backwardsOffset
+      this.setState({offset})
+      this.store.set('offset', this.state.offset)
+      console.log(`
+        + OFFSET ${this.forwardOffset}ms --> ${this.state.offset}ms
+        Time DIFF: ${this.state.timeDiff + this.state.offset}ms
+      `)
 
       // If we're playing audio live adjust it.
       if (this.sound.playing()) {
@@ -168,6 +175,7 @@ class App extends Component {
   }
 
   componentWillUnmount() {
+    control.disconnect()
     document.querySelector('body')
       .removeEventListener('keydown', (event) => this.onKey(event)) 
   }
@@ -243,7 +251,7 @@ class App extends Component {
         this.sound.pause()
       })
       .onVolume((data) => {
-        this.sound.volume(data.value)
+        this.setVolume(data.value)
       })
       .onSelectSong((data) => {
         console.log('CONTROLLER selected a SONG:', data)
@@ -274,16 +282,16 @@ class App extends Component {
           uuid: data.uuid,
           time: futureTime,
           song: this.selectedSong,
-          volume: this.sound.volume(),
+          volume: this.getVolume(),
           startAt: localTime + this.state.timeDiff + delay
         })
       })
       .onPlay((data) => {
         const localTime = (new Date()).getTime()
         const startAt = data.startAt + this.state.timeDiff
-        const startDiff = startAt - localTime
+        const delay = startAt - localTime + this.state.offset
         console.log('GOT PLAY, start at:', startAt)
-        console.log(`START IN: ${startDiff} ms`)
+        console.log(`START IN: ${delay} ms`)
         this.setStatus('willPlay', this.getSongStatus(this.selectedSong))
         setTimeout(() => {
           this.setStatus('preloading', this.getSongStatus(this.selectedSong))
@@ -295,7 +303,7 @@ class App extends Component {
             const isPlaying = this.sound.playing()
             console.log('Started playing?', isPlaying)
           })
-        }, startDiff)
+        }, parseInt(delay, 10))
       })
       .onJoinAt((data) => {
         console.log('=== JOIN AT', data)
@@ -304,29 +312,28 @@ class App extends Component {
 
         const localTime = (new Date()).getTime()
         const startAt = data.startAt + this.state.timeDiff
-        const startDiff = startAt - localTime
+        const delay = startAt - localTime + this.state.offset
 
-        console.log(`start in ${startDiff} ms`)
+        console.log(`start in ${delay} ms`)
         setTimeout(() => {
           console.log('PLAY!')
           this.sound.seek(data.time)
-          this.sound.volume(data.vol)
+          this.setVolume(data.vol)
           this.sound.play()
           this.setStatus('playing', this.getSongStatus(this.selectedSong))
 
           const isPlaying = this.sound.playing()
           console.log('Started playing?', isPlaying)
-        }, startDiff)
+        }, parseInt(delay, 10))
 
         this.setStatus('preloading', this.getSongStatus(this.selectedSong))
         this.forceFillPlaybackBuffer(1000)
       })
-  }
-
-  getStartDiff (delay = 0) {
-    const startDiff = this.state.timeDiff + delay
-    console.log(`Start diff: ${startDiff} (delay: ${delay})`)
-    return startDiff
+      .onDisconnect((data) => {
+        console.log('DISCONNECTED CLIENT', data)
+        const joinedClients = this.state.joinedClients - 1
+        this.setState({joinedClients})
+      })
   }
 
   play () {
@@ -335,7 +342,7 @@ class App extends Component {
     this.isMaster = true
 
     this.setStatus('willPlay', this.getSongStatus(this.selectedSong))
-    const delay = this.getStartDiff(this.playDelay)
+    const delay = this.state.timeDiff + this.playDelay + this.state.offset
     setTimeout(() => {
       this.setStatus('preloading', this.getSongStatus(this.selectedSong))
       this.forceFillPlaybackBuffer(this.state.preloadTime, () => {
@@ -346,17 +353,17 @@ class App extends Component {
         const isPlaying = this.sound.playing()
         console.log('Started playing?', isPlaying)
       })
-    }, delay)
+    }, parseInt(delay, 10))
   }
 
   forceFillPlaybackBuffer (preloadTime, callback) {
-    const vol = this.sound.volume()
-    this.sound.volume(0)
+    const vol = this.getVolume()
+    this.setVolume(0)
     this.sound.play()
 
     setTimeout(() => {
       this.sound.stop()
-      this.sound.volume(vol)
+      this.setVolume(vol)
 
       if (typeof callback !== 'function') return
       callback()
@@ -377,7 +384,15 @@ class App extends Component {
   volume (value) {
     control.volume({value})
     this.setState({volume: value})
+    this.setVolume(value)
+  }
+
+  setVolume (value) {
     this.sound.volume(value)
+  }
+
+  getVolume () {
+    return this.sound.volume()
   }
 
   /**
@@ -400,15 +415,13 @@ class App extends Component {
   doResetSync () {
     console.log('Reset Sync')
     this.store.set('timeDiff', '')
+    this.store.set('offset', 0)
     this.doReload()
-    // this.setState({timeDiff: ''}, () => {
-    //   this.synchronize()
-    // })
   }
 
   selectSong (song) {
     console.log('-- SELECTED SONG:', song)
-    control.selectSong({value: {song, volume: this.sound.volume()}})
+    control.selectSong({value: {song, volume: this.getVolume()}})
     this.setAudioFile(song.file)
     this.selectedSong = song
     this.setStatus('selectedSong', this.getSongStatus(this.selectedSong))
@@ -416,7 +429,7 @@ class App extends Component {
 
   onSelectSong ({song, volume}) {
     this.setAudioFile(song.file)
-    this.sound.volume(volume)
+    this.setVolume(volume)
     this.selectedSong = song
     this.setStatus('selectedSong', this.getSongStatus(this.selectedSong)) 
   }
@@ -470,12 +483,6 @@ class App extends Component {
     )
   }
 
-  reconnect () {
-    console.log('Reconnecting...')
-    this.closeSettingsModal()
-    this.synchronize()
-  }
-
   loadFromYoutube (videoId) {
     console.log('Load from YOUTUBE:', videoId)
     this.setState({youtubeId: videoId})
@@ -500,6 +507,7 @@ class App extends Component {
       <IconButton
         className='top-right'
         tooltip="Re-Sync"
+        onClick={() => this.doResetSync()}
       >
         <SyncIcon className='icon-button' />
       </IconButton>
@@ -517,6 +525,7 @@ class App extends Component {
         maxRequests={this.state.maxRequests}
         preloadTime={this.state.preloadTime}
         timeDiff={this.state.timeDiff}
+        offset={this.state.offset}
         resetSync={() => this.doResetSync()}
         onSettingsChange={(change) => this.onSettingsChange(change)}
       />

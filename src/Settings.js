@@ -39,7 +39,6 @@ export default class Settings extends Component {
           actions={[
             <FlatButton onClick={() => this.props.resetSync()}>Re-Sync</FlatButton>,
             <FlatButton onClick={() => this.closeModal()}>Close</FlatButton>
-            // <FlatButton onClick={() => this.props.reconnect()}>Reconnect</FlatButton>
           ]}
           modal={false}
           open={this.state.modalOpen}
@@ -80,6 +79,12 @@ export default class Settings extends Component {
             floatingLabelText="Time Diff (ms)"
             value={this.props.timeDiff}
             onChange={(event, value) => this.props.onSettingsChange({timeDiff: value})}
+          />
+          <TextField
+            style={{width: '100%'}}
+            floatingLabelText="Offset (ms)"
+            value={this.props.offset}
+            onChange={(event, value) => this.props.onSettingsChange({offset: value})}
           />
         </Dialog>
       </div>

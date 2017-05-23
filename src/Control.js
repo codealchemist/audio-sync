@@ -55,6 +55,10 @@ class Control {
         }
         if (typeof this.onJoinAtCallback !== 'function') return
         this.onJoinAtCallback(data)
+      },
+      disconnect: (data) => {
+        if (typeof this.onDisconnectCallback !== 'function') return
+        this.onDisconnectCallback(data)
       }
     }
   }
@@ -159,6 +163,11 @@ class Control {
     return this
   }
 
+  onDisconnect (callback) {
+    this.onDisconnectCallback = callback
+    return this
+  }
+
   send (message) {
     const data = JSON.stringify(message)
     this.ws.send(data)
@@ -206,6 +215,11 @@ class Control {
 
   resetSync (data) {
     this.send({type: 'resetSync', data})
+    return this
+  }
+
+  disconnect (data) {
+    this.send({type: 'disconnect', data})
     return this
   }
 }
